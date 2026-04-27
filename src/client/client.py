@@ -50,41 +50,45 @@ def get_target_port(raw_http_bytes):
     return 3000
 
 async def main():
-    try:
-        tunnel_reader, tunnel_writer = await asyncio.open_connection('0.0.0.0', TUNNEL_PORT)
-    except ConnectionRefusedError:
-        print("Failed to connect. Is relay.py running?")
-        return
-
-    try:
-        hand_shake = pack_message(0, AEGIS_SECRET.encode('utf-8', errors='ignore'))
-        tunnel_writer.write(hand_shake)
-        await tunnel_writer.drain()
-
-    except Exception as e:
-        print("Authentication Failed")
-        return
 
     while True:
-        connection_id, payload = await read_message(tunnel_reader)
-
-        if payload is None:
-            break
-
         try:
-            if connection_id not in active_local_sockets:
-                port = get_target_port(payload)
-                local_reader, local_writer = await asyncio.open_connection('0.0.0.0', port)
-                active_local_sockets[connection_id] = local_writer
-                asyncio.create_task(pump_local_to_tunnel(connection_id, local_reader, tunnel_writer))
+            tunnel_reader, tunnel_writer = await asyncio.open_connection('0.0.0.0', TUNNEL_PORT)
 
-            local_writer = active_local_sockets[connection_id]
-            local_writer.write(payload)
-            await local_writer.drain()
-        except ConnectionRefusedError:
-            print(f"Nothing is running on Port !")
-            continue
+            hand_shake = pack_message(0, AEGIS_SECRET.encode('utf-8', errors='ignore'))
+            tunnel_writer.write(hand_shake)
+            await tunnel_writer.drain()
+            print("AUTHENTICATED! Tunnel established")
 
+            while True:
+                connection_id, payload = await read_message(tunnel_reader)
+
+                if payload is None:
+                    break
+
+                try:
+                    if connection_id not in active_local_sockets:
+                        port = get_target_port(payload)
+                        local_reader, local_writer = await asyncio.open_connection('0.0.0.0', port)
+                        active_local_sockets[connection_id] = local_writer
+                        asyncio.create_task(pump_local_to_tunnel(connection_id, local_reader, tunnel_writer))
+
+                    local_writer = active_local_sockets[connection_id]
+                    local_writer.write(payload)
+                    await local_writer.drain()
+                except ConnectionRefusedError:
+                    print(f"Nothing is running on Port !")
+                    continue
+
+        except Exception as e:
+            print(f"[-] Network error: {e}")
+
+        for writer in active_local_sockets.values():
+            writer.close()
+        active_local_sockets.clear()  # Empty the dictionary!
+
+        print("[-] Retrying in 5 seconds...")
+        await asyncio.sleep(5)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
