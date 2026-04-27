@@ -19,7 +19,7 @@ async def handle_tunnel_connection(reader, writer):
 
     addr = writer.get_extra_info('peername')
 
-    print(f"[*] TUNNEL ESTABLISHED: connected from {addr}")
+    print(f"TUNNEL ESTABLISHED: connected from {addr}")
 
     try:
         while True:
@@ -33,13 +33,13 @@ async def handle_tunnel_connection(reader, writer):
                 user_writer.write(payload)
                 await user_writer.drain()
             else:
-                print(f"[-] Dropping packet: User {connection_id} already disconnected.")
+                print(f"Dropping packet: User {connection_id} already disconnected.")
 
         await writer.wait_closed()
     except Exception as e:
         pass
     finally:
-        print("[-] TUNNEL BROKEN: disconnected.")
+        print("TUNNEL BROKEN: disconnected.")
         active_tunnel_reader = None
         active_tunnel_writer = None
         writer.close()
@@ -50,7 +50,7 @@ async def handle_public_traffic(reader, writer):
 
     addr = writer.get_extra_info('peername')
     if active_tunnel_writer is None:
-        print(f"[-] Dropping public request from {addr}: No tunnel active.")
+        print(f"Dropping public request from {addr}: No tunnel active.")
         writer.close()
         return
 
@@ -61,7 +61,7 @@ async def handle_public_traffic(reader, writer):
 
     active_users[cur_connection_id] = writer
 
-    print(f"[+] Public request from {addr}")
+    print(f"Public request from {addr}")
 
     try:
         while True:
@@ -83,7 +83,7 @@ async def handle_public_traffic(reader, writer):
             await writer.wait_closed()
         except Exception:
             pass
-        print(f"[-] Public connection {cur_connection_id} closed.")
+        print(f"Public connection {cur_connection_id} closed.")
 
 async def main():
     public_server = await asyncio.start_server(
