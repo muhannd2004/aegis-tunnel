@@ -6,6 +6,7 @@ TUNNEL_PORT = 7000
 apps = None
 ports = None
 active_local_sockets = {}
+AEGIS_SECRET = None
 
 async def pump_local_to_tunnel(connection_id, local_reader, tunnel_writer):
 
@@ -55,6 +56,15 @@ async def main():
         print("Failed to connect. Is relay.py running?")
         return
 
+    try:
+        hand_shake = pack_message(0, AEGIS_SECRET.encode('utf-8', errors='ignore'))
+        tunnel_writer.write(hand_shake)
+        await tunnel_writer.drain()
+
+    except Exception as e:
+        print("Authentication Failed")
+        return
+
     while True:
         connection_id, payload = await read_message(tunnel_reader)
 
@@ -80,6 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", nargs='+')
     parser.add_argument("--app", nargs='+')
+    parser.add_argument('--auth', required=True, help="Secret key for the cloud tunnel")
 
     args = parser.parse_args()
 
@@ -88,5 +99,6 @@ if __name__ == "__main__":
 
     apps = args.app
     ports = [int(x) for x in args.port]
+    AEGIS_SECRET = args.auth
 
     asyncio.run(main())
