@@ -7,6 +7,7 @@ apps = None
 ports = None
 active_local_sockets = {}
 AEGIS_SECRET = None
+CLOUD_IP = '127.0.0.1'
 
 async def pump_local_to_tunnel(connection_id, local_reader, tunnel_writer):
 
@@ -53,7 +54,7 @@ async def main():
 
     while True:
         try:
-            tunnel_reader, tunnel_writer = await asyncio.open_connection('0.0.0.0', TUNNEL_PORT)
+            tunnel_reader, tunnel_writer = await asyncio.open_connection(CLOUD_IP, TUNNEL_PORT)
 
             hand_shake = pack_message(0, AEGIS_SECRET.encode('utf-8', errors='ignore'))
             tunnel_writer.write(hand_shake)
@@ -69,7 +70,7 @@ async def main():
                 try:
                     if connection_id not in active_local_sockets:
                         port = get_target_port(payload)
-                        local_reader, local_writer = await asyncio.open_connection('0.0.0.0', port)
+                        local_reader, local_writer = await asyncio.open_connection(CLOUD_IP, port)
                         active_local_sockets[connection_id] = local_writer
                         asyncio.create_task(pump_local_to_tunnel(connection_id, local_reader, tunnel_writer))
 
